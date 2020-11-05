@@ -158,12 +158,6 @@ pub struct ShortContent {
     pub summary: String,
 
 }
-//
-// #[derive(Template)]
-// #[template(path = "user.html", print = "code")]
-// struct ContentTemplate<'a> {
-//     content: &'a Vec<ShortContent>,
-// }
 
 
 pub async fn short_content_from_menu(
