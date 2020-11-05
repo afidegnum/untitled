@@ -256,19 +256,19 @@ struct LayoutTemplate<'a> {
 #[derive(Template)]
 #[template(path = "index.html", print = "code")]
 struct HomeTemplate<'a> {
-    parent: &'a LayoutTemplate<'a>,
+    prt: LayoutTemplate<'a>,
 }
 
 #[derive(Template)]
 #[template(path = "blog.html", print = "code")]
 struct BlogTemplate<'a> {
-    parent: &'a LayoutTemplate<'a>,
+    prt: LayoutTemplate<'a>,
 }
 
 #[derive(Template)]
 #[template(path = "page.html", print = "code")]
 struct PageTemplate<'a> {
-    parent: &'a LayoutTemplate<'a>,
+    prt:  LayoutTemplate<'a>,
 }
 
 
@@ -283,10 +283,10 @@ impl LayoutTemplate {
     fn get_specific(&self, kind: &str) -> TemplateType {
         match kind {
         "child" => TemplateType::HomeTemplate(HomeTemplate {
-        parent: self.clone(),
+            prt: self(),
             }),
-        "sibbling" => TemplateType::BlogTemplate(BlogTemplate {      parent: self.clone(),            }),
-        "sibbling" => TemplateType::PageTemplate(PageTemplate {      parent: self.clone(),            }),
+        "sibbling" => TemplateType::BlogTemplate(BlogTemplate {      prt: self,            }),
+        "sibbling" => TemplateType::PageTemplate(PageTemplate {      prt: self,            }),
         _ => panic!("unknown template"),
         }
     }
