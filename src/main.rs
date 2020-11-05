@@ -239,8 +239,8 @@ struct UserTemplate<'a> {
     menus: &'a Vec<Menu>,
 }
 
-#[derive(Template)]
-#[template(path = "layout.html", print = "code")]
+#[derive(Template, Clone)]
+#[template(path = "layout.html")]
 struct LayoutTemplate<'a> {
     url: &'a str,
     menus: Vec<Menu>,
@@ -248,21 +248,21 @@ struct LayoutTemplate<'a> {
 }
 
 #[derive(Template)]
-#[template(path = "index.html", print = "code")]
+#[template(path = "index.html")]
 struct HomeTemplate<'a> {
-    prt: LayoutTemplate<'a>,
+    parent_tpl: LayoutTemplate<'a>,
 }
 
 #[derive(Template)]
-#[template(path = "blog.html", print = "code")]
+#[template(path = "blog.html")]
 struct BlogTemplate<'a> {
-    prt: LayoutTemplate<'a>,
+    parent_tpl: LayoutTemplate<'a>,
 }
 
 #[derive(Template)]
-#[template(path = "page.html", print = "code")]
+#[template(path = "page.html")]
 struct PageTemplate<'a> {
-    prt:  LayoutTemplate<'a>,
+    parent_tpl:  LayoutTemplate<'a>,
 }
 
 
@@ -273,14 +273,16 @@ enum TemplateType<'a> {
     PageTemplate(PageTemplate<'a>),
 }
 
-impl LayoutTemplate {
+impl LayoutTemplate<'_> {
     fn get_specific(&self, kind: &str) -> TemplateType {
+
+        tpl = self;
         match kind {
         "child" => TemplateType::HomeTemplate(HomeTemplate {
-            prt: self(),
+            parent_tpl: tpl,
             }),
-        "sibbling" => TemplateType::BlogTemplate(BlogTemplate {      prt: self,            }),
-        "sibbling" => TemplateType::PageTemplate(PageTemplate {      prt: self,            }),
+        "sibbling" => TemplateType::BlogTemplate(BlogTemplate {      parent_tpl: tpl,            }),
+        "sibbling" => TemplateType::PageTemplate(PageTemplate {      parent_tpl: tpl,            }),
         _ => panic!("unknown template"),
         }
     }
@@ -342,7 +344,8 @@ async fn index(req: HttpRequest,db_pool: web::Data<Pool>) -> Result<HttpResponse
         contents: short_content_from_menu(&client, 1).await?
     }.render().unwrap();
 
-    let t = s.get_specific(&menu);
+    // let t = s.get_specific(&menu);
+    let t = LayoutTemplate::get_specific(s, menu.clone());
 
     Ok(HttpResponse::Ok().content_type("text/html").body(s))
 
