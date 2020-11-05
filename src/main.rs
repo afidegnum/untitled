@@ -274,15 +274,15 @@ enum TemplateType<'a> {
 }
 
 impl LayoutTemplate<'_> {
-    fn get_specific(&self, kind: &str) -> TemplateType {
+    fn get_specific(self, kind: &str) -> TemplateType {
 
-        tpl = self;
+
         match kind {
         "child" => TemplateType::HomeTemplate(HomeTemplate {
-            parent_tpl: tpl,
+            parent_tpl: self.clone(),
             }),
-        "sibbling" => TemplateType::BlogTemplate(BlogTemplate {      parent_tpl: tpl,            }),
-        "sibbling" => TemplateType::PageTemplate(PageTemplate {      parent_tpl: tpl,            }),
+        "sibbling" => TemplateType::BlogTemplate(BlogTemplate {      parent_tpl: self.clone(),            }),
+        "sibbling" => TemplateType::PageTemplate(PageTemplate {      parent_tpl: self.clone(),            }),
         _ => panic!("unknown template"),
         }
     }
@@ -342,12 +342,20 @@ async fn index(req: HttpRequest,db_pool: web::Data<Pool>) -> Result<HttpResponse
         url: rurl.as_ref(),
         menus: menu_list(&client).await?,
         contents: short_content_from_menu(&client, 1).await?
-    }.render().unwrap();
+    };
 
-    // let t = s.get_specific(&menu);
-    let t = LayoutTemplate::get_specific(s, menu.clone());
 
-    Ok(HttpResponse::Ok().content_type("text/html").body(s))
+
+
+
+
+
+    let t = &s.get_specific(&menu);
+
+
+    // let t = LayoutTemplate::get_specific(s, menu.clone());
+
+    Ok(HttpResponse::Ok().content_type("text/html").body(&s.render().unwrap()))
 
 
 }
