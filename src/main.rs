@@ -355,6 +355,7 @@ async fn index(req: HttpRequest, db_pool: web::Data<Pool>) -> Result<HttpRespons
 
 
 
+
     // if let TemplateType::HomeTemplate(y) = y{
     //     Ok(HttpResponse::Ok().content_type("text/html").body(y.top.render().unwrap()))
     // } else {
