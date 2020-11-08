@@ -150,7 +150,7 @@ pub async fn menu_id(client: &Client, id_content: i32) -> Result<Menu, io::Error
 
 // Content
 
-#[derive(Serialize, Clone, Deserialize, PostgresMapper)]
+#[derive(Serialize, Clone, Deserialize, PostgresMapper, Debug)]
 #[pg_mapper(table = "content")]
 pub struct ShortContent {
     pub id: i32,
@@ -231,7 +231,7 @@ pub async fn menus(req: HttpRequest, db_pool: web::Data<Pool>) -> impl Responder
 
 
 #[derive(Template)]
-#[template(path = "user.html", print = "ast")]
+#[template(path = "user.html")]
 struct UserTemplate<'a> {
     name: &'a str,
     text: &'a str,
@@ -239,7 +239,7 @@ struct UserTemplate<'a> {
     menus: &'a Vec<Menu>,
 }
 
-#[derive(Template, Clone)]
+#[derive(Template, Clone, Debug)]
 #[template(path = "layout.html")]
 struct LayoutTemplate<'a> {
     url: &'a str,
@@ -247,42 +247,50 @@ struct LayoutTemplate<'a> {
     contents: Vec<ShortContent>,
 }
 
-#[derive(Template)]
+#[derive(Template, Debug)]
 #[template(path = "index.html")]
 struct HomeTemplate<'a> {
-    parent_tpl: LayoutTemplate<'a>,
+    top: LayoutTemplate<'a>,
+    welcome: &'a str,
 }
 
-#[derive(Template)]
+#[derive(Template, Debug)]
 #[template(path = "blog.html")]
 struct BlogTemplate<'a> {
-    parent_tpl: LayoutTemplate<'a>,
+    top: LayoutTemplate<'a>,
 }
 
-#[derive(Template)]
+#[derive(Template, Debug)]
 #[template(path = "page.html")]
 struct PageTemplate<'a> {
-    parent_tpl:  LayoutTemplate<'a>,
+    top:  LayoutTemplate<'a>,
 }
 
 
-
+#[derive(Debug)]
 enum TemplateType<'a> {
     HomeTemplate(HomeTemplate<'a>),
     BlogTemplate(BlogTemplate<'a>),
     PageTemplate(PageTemplate<'a>),
+    LayoutTemplate(LayoutTemplate<'a>),
 }
 
 impl LayoutTemplate<'_> {
-    fn get_specific(self, kind: &str) -> TemplateType {
+    fn get_specific(&self, kind: &str) -> TemplateType {
 
 
         match kind {
-        "child" => TemplateType::HomeTemplate(HomeTemplate {
-            parent_tpl: self.clone(),
-            }),
-        "sibbling" => TemplateType::BlogTemplate(BlogTemplate {      parent_tpl: self.clone(),            }),
-        "sibbling" => TemplateType::PageTemplate(PageTemplate {      parent_tpl: self.clone(),            }),
+        "home" => TemplateType::HomeTemplate(HomeTemplate {
+            top: self.clone(),
+            welcome: "Welcome to the page"
+        }),
+        "blog" => TemplateType::BlogTemplate(BlogTemplate {      top: self.clone(),            }),
+        "page" => TemplateType::PageTemplate(PageTemplate {      top: self.clone(),            }),
+        "page" => TemplateType::LayoutTemplate(LayoutTemplate {
+            url: "baseurl",
+            menus: vec![],
+            contents: vec![]
+        }),
         _ => panic!("unknown template"),
         }
     }
@@ -306,56 +314,78 @@ struct NotFound;
 
 // with url query i.e /?q = 234
 // async fn index(req: HttpRequest,db_pool: web::Data<Pool>, id_path: web::Path<(i32,)>, query: web::Query<HashMap<String, String>>) -> Result<HttpResponse> {
-async fn index(req: HttpRequest,db_pool: web::Data<Pool>) -> Result<HttpResponse> {
 
+async fn index(req: HttpRequest, db_pool: web::Data<Pool>) -> Result<HttpResponse> {
 
     // let path = id_path.into_inner();
-
     let client: Client = db_pool
         .get()
         .await
         .expect("Error connecting to the database");
 
     // let result = short_content_from_menu(&client, path.0).await?;
-    // let mut url = req.url_for("home", &["names"]).unwrap();
+    let rurl = req.url_for("content", &["page"]).unwrap();
         // url.set_query(Some("q=asdf"));
-    let rurl = req.url_for_static("home").unwrap();
-    // println!("{:?}\n {:?}", req.path(), req.uri());
+    // let rurl = req.url_for_static("home").unwrap();
 
-    // let s = if path.menu_id != 0{
-    //
-    //     PageTemplate {
-    //
-    //         url: rurl.as_ref(),
-    //         menus: &menu_list(&client).await?,
-    //         contents: &short_content_from_menu(&client, path.menu_id).await?
-    //     }
-    //         .render()
-    //         .unwrap()
-    // } else {
-    //     NotFound.render().unwrap()
-    // };
 
-    let menu = req.match_info().get("name").unwrap_or("index");
 
+
+    // println!("path: {:?} uri: {:?} req: {:?} menu: {:?}", req.path(), req.uri(), &rurl, &menu);
     let s = LayoutTemplate{
         url: rurl.as_ref(),
         menus: menu_list(&client).await?,
         contents: short_content_from_menu(&client, 1).await?
     };
 
+    // &s.get_specific("page");
+
+    let menu = req.match_info().get("content").unwrap_or("home");
+
+    let name = req.match_name().unwrap();
+    // if menu != "favicon.ico" {let y = LayoutTemplate::get_specific(&s, &menu); };
+
+    // if menu != "favicon.ico" { y = LayoutTemplate::get_specific(&s, &menu); }
+
+    let y = if menu != "favicon.ico" { Some(LayoutTemplate::get_specific(&s, &menu)) } else { None };
+
+    println!("Name: {:#?} ",  &name);
+    // let y = LayoutTemplate::get_specific(&s, &menu);
 
 
 
 
+    // if let TemplateType::HomeTemplate(y) = y{
+    //     Ok(HttpResponse::Ok().content_type("text/html").body(y.top.render().unwrap()))
+    // } else {
+    //     unimplemented!()
+    // }
+
+    match y {
+        Some(TemplateType::HomeTemplate(y)) => {
+            println!("T: {:#?} ", &y);
+            Ok(HttpResponse::Ok().content_type("text/html").body(y.render().unwrap()))
+        },
+
+        Some(TemplateType::PageTemplate(y)) => {
+            println!("T: {:#?} ", &y);
+            Ok(HttpResponse::Ok().content_type("text/html").body(y.render().unwrap()))
+        },
+
+        Some(TemplateType::BlogTemplate(y)) => {
+            println!("T: {:#?} ", &y);
+            Ok(HttpResponse::Ok().content_type("text/html").body(y.render().unwrap()))
+        },
+        Some(TemplateType::LayoutTemplate(y)) => {
+            println!("T: {:#?} ", &y);
+            Ok(HttpResponse::Ok().content_type("text/html").body(y.render().unwrap()))
+        },
+        None => {  println!("T: {:#?} M: {:#?}  ", &y, &menu); Ok(HttpResponse::Ok().content_type("text/html").body(s.render().unwrap())) }
+    }
 
 
-    let t = &s.get_specific(&menu);
 
 
-    // let t = LayoutTemplate::get_specific(s, menu.clone());
-
-    Ok(HttpResponse::Ok().content_type("text/html").body(&s.render().unwrap()))
 
 
 }
@@ -385,10 +415,10 @@ async fn main() -> std::io::Result<()> {
     // start http server
     HttpServer::new(move || {
         App::new()
-            // .service(web::resource("/").name("home").route(web::get().to(index)))
-            // .service(web::resource("/short/{id}").name("content").route(web::get().to(index)))
-            .route("/", web::get().to(index))
-            .route("/{name}", web::get().to(index))
+            .service(web::resource("/").name("home").route(web::get().to(index)))
+            .service(web::resource("/{content}").name("content").route(web::get().to(index)))
+            // .route("/", web::get().to(index))
+            // .route("/{name}", web::get().to(index))
             .data(pool.clone())
 
     })

@@ -1,32 +1,9 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8" />
-    <title>Actix web</title>
-</head>
-<body>
-<h1></h1>
-<p>
-
-</p>
-
-<!--<p><a href="{{ "{:?}"|format(menus) }}">Home</a></p>-->
-<p><a href="{{ url }}">Home</a></p>
-<!--{{ "{:?}"|format(menus) }}-->
-
-<ul>
-    {% for menu in menus %}
-    <li>{{ menu.name|e }}</li>
-    {% endfor %}
-</ul>
-
-<ul>
-    {% for item in contents %}
-    <li>{{ item.title|e }}</li>
-    {% endfor %}
-</ul>
+{% extends "layout.html" %}
 
 
+<p><a href="({{ welcome }})">Home</a></p>
 
-</body>
-</html>
+{% block content %}
+{{ top }}
+
+{% endblock %}
